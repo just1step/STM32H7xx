@@ -45,6 +45,7 @@ int main(void)
 #endif
 
     HAL_Init();
+
     SystemClock_Config();
 
     if(!(CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk)) {
@@ -165,7 +166,11 @@ void SystemClock_Config(void)
 
     /** Supply configuration update enable
     */
+#if defined(STM32H725xx)
+    HAL_PWREx_ConfigSupply(PWR_DIRECT_SMPS_SUPPLY);
+#else
     HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
+#endif
     /** Configure the main internal regulator output voltage
     */
     __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
@@ -241,6 +246,37 @@ void SystemClock_Config(void)
     PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
 
 #endif // H743 other boards
+
+#elif defined (STM32H725xx)
+
+#define FLASH_LATENCY FLASH_LATENCY_3
+
+#if RTC_ENABLE
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+    RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+#else
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+#endif
+    RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+    RCC_OscInitStruct.PLL.PLLM = 12;
+    RCC_OscInitStruct.PLL.PLLN = 275;
+    RCC_OscInitStruct.PLL.PLLP = 1;
+    RCC_OscInitStruct.PLL.PLLQ = 5;
+    RCC_OscInitStruct.PLL.PLLR = 5;
+    RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_1;
+    RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+    RCC_OscInitStruct.PLL.PLLFRACN = 0;
+
+    PeriphClkInitStruct.PLL2.PLL2M = 6;
+    PeriphClkInitStruct.PLL2.PLL2N = 120;
+    PeriphClkInitStruct.PLL2.PLL2P = 2;
+    PeriphClkInitStruct.PLL2.PLL2Q = 10;
+    PeriphClkInitStruct.PLL2.PLL2R = 40;
+    PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_2;
+    PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
+    PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
 
 #elif defined (STM32H723xx)
 
@@ -350,7 +386,7 @@ void SystemClock_Config(void)
 #if defined(STM32H743xx)
     PeriphClkInitStruct.PeriphClockSelection = PeriphClkInitStruct.PeriphClockSelection | RCC_PERIPHCLK_QSPI;
     PeriphClkInitStruct.QspiClockSelection = RCC_QSPICLKSOURCE_PLL;
-#elif defined(STM32H723xx)
+#elif defined(STM32H723xx) || defined(STM32H725xx)
     PeriphClkInitStruct.PeriphClockSelection = PeriphClkInitStruct.PeriphClockSelection | RCC_PERIPHCLK_OSPI;
     PeriphClkInitStruct.OspiClockSelection = RCC_OSPICLKSOURCE_PLL;
 

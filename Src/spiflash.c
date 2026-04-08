@@ -25,7 +25,7 @@
 // up to 128Mb (using 24bit addressing mode).
 //
 // STM32H743xx devices using QUADSPI peripheral in QSPI mode.
-// STM32H723xx devices using OCTOSPI peripheral in QSPI mode.
+// STM32H72x devices using OCTOSPI peripheral in QSPI mode.
 //
 // Code derived from various sources, including WeAct examples, GnWManager (Apache),
 // AdaFruit UF2 bootloader (MIT), and ST ExternalLoader drivers (BSD).
@@ -47,14 +47,14 @@ static void QSPI_SetCmd(QSPI_CommandTypeDef *qspi_cmd, const flash_cmd_t *cmd, u
 #if SPIFLASH_MEMORY_MAPPED
 static int  QSPI_EnableMemoryMappedMode(void);
 #endif // SPIFLASH_MEMORY_MAPPED
-#elif defined(STM32H723xx)
+#elif defined(STM32H723xx) || defined(STM32H725xx)
 OSPI_HandleTypeDef hxspi;
 static int  OSPI_Init(void);
 static void OSPI_SetCmd(OSPI_RegularCmdTypeDef *ospi_cmd, const flash_cmd_t *cmd, uint32_t address, uint8_t *data, size_t len);
 #if SPIFLASH_MEMORY_MAPPED
 static int  OSPI_EnableMemoryMappedMode(void);
 #endif // SPIFLASH_MEMORY_MAPPED
-#endif // STM32H723xx
+#endif // STM32H72x
 
 const uint32_t instruction_line_map[] = {
     [LINES_0] = xSPI_INSTRUCTION_NONE,
@@ -574,7 +574,7 @@ static int W25Qxx_Init()
  *
  * Initial support as follows;
  * - STM32H743xx devices using QUADSPI peripheral in QSPI mode
- * - STM32H723xx devices using OCTOSPI peripheral in QSPI mode
+ * - STM32H72x devices using OCTOSPI peripheral in QSPI mode
  *
  * The HAL MSP functions are called from within the ST HAL_xSPI_Init() code.
  *
@@ -671,7 +671,7 @@ static int QSPI_EnableMemoryMappedMode(void)
 }
 #endif // SPIFLASH_MEMORY_MAPPED
 
-#elif defined(STM32H723xx)
+#elif defined(STM32H723xx) || defined(STM32H725xx)
 
 static int OSPI_Init(void)
 {
@@ -793,7 +793,7 @@ static int OSPI_EnableMemoryMappedMode(void)
 }
 #endif // SPIFLASH_MEMORY_MAPPED
 
-#endif // STM32H743xx / STM32H723xx specific code
+#endif // STM32H743xx / STM32H72x specific code
 
 void spiflash_init(void)
 {

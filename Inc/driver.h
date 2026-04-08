@@ -137,6 +137,8 @@
   #include "boards/btt_scylla_map.h"
 #elif defined(BOARD_WEACT_MINI)
   #include "boards/weact_mini_map.h"
+#elif defined(BOARD_H725_CORE)
+  #include "boards/h725_core_map.h"
 #elif defined(BOARD_REFERENCE)
   #include "boards/reference_map.h"
 #elif defined(BOARD_MY_MACHINE)

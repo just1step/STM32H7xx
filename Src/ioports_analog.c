@@ -445,7 +445,7 @@ void ioports_init_analog (pin_group_pins_t *aux_inputs, pin_group_pins_t *aux_ou
 
                             adc_config.Channel = aux_inputs->pins.inputs[i].channel = adc_map[j].ch;
 
-#if defined(STM32H723xx)
+#if defined(STM32H723xx) || defined(STM32H725xx)
                             if(adc_map[j].alt == 3)
                                 adc_config.SamplingTime = ADC3_SAMPLETIME_2CYCLES_5;
                             else

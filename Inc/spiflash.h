@@ -82,7 +82,7 @@ int  spiflash_sector_erase(uint32_t address);
 #define xSPI_DATA_1_LINE         QSPI_DATA_1_LINE
 #define xSPI_DATA_4_LINES        QSPI_DATA_4_LINES
 
-#elif defined(STM32H723xx)
+#elif defined(STM32H723xx) || defined(STM32H725xx)
 
 #define xSPI_(name)              OSPI_ ## name
 #define HAL_xSPI(name)           HAL_OSPI_ ## name

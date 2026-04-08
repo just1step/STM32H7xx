@@ -33,7 +33,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -204,7 +203,7 @@ void SysTick_Handler(void)
 
 #if USB_SERIAL_CDC
 
-#if defined(STM32H723xx)
+#if defined(STM32H723xx) || defined(STM32H725xx)
 /**
   * @brief This function handles USB On The Go HS global interrupt.
   */
@@ -232,7 +231,7 @@ void OTG_FS_IRQHandler(void)
 
   /* USER CODE END OTG_FS_IRQn 1 */
 }
-#endif // STM32H723xx / STM32H743xx
+#endif // STM32H72x / STM32H743xx
 
 #endif // USB_SERIAL_CDC
 

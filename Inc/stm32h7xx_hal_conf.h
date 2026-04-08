@@ -105,7 +105,11 @@
   *        (when HSE is used as system clock source, directly or through the PLL).
   */
 #if !defined  (HSE_VALUE)
-#define HSE_VALUE    (25000000UL) /*!< Value of the External oscillator in Hz : FPGA case fixed to 60MHZ */
+#if defined(STM32H725xx)
+#define HSE_VALUE    (24000000UL) /*!< Value of the External oscillator in Hz */
+#else
+#define HSE_VALUE    (25000000UL) /*!< Value of the External oscillator in Hz */
+#endif
 #endif /* HSE_VALUE */
 
 #if !defined  (HSE_STARTUP_TIMEOUT)

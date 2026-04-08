@@ -2583,6 +2583,8 @@ bool driver_init (void)
 
 #if defined(STM32H723xx)
     hal.info = "STM32H723";
+#elif defined(STM32H725xx)
+    hal.info = "STM32H725";
 #else
     hal.info = "STM32H743";
 #endif
