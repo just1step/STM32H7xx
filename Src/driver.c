@@ -105,6 +105,57 @@ static volatile uint32_t rpm_timer_ovf = 0;
 
 static periph_signal_t *periph_pins = NULL;
 
+#ifdef STATUS_LED_PIN
+static bool status_led_ready = false;
+static uint16_t status_led_ticks = 0;
+
+static inline void status_led_write (bool on)
+{
+    HAL_GPIO_WritePin(STATUS_LED_PORT, 1U << STATUS_LED_PIN,
+#if STATUS_LED_INVERT
+        on ? GPIO_PIN_RESET : GPIO_PIN_SET
+#else
+        on ? GPIO_PIN_SET : GPIO_PIN_RESET
+#endif
+    );
+}
+
+static void status_led_init (void)
+{
+    GPIO_InitTypeDef GPIO_Init = {
+        .Pin = 1U << STATUS_LED_PIN,
+        .Mode = GPIO_MODE_OUTPUT_PP,
+        .Pull = GPIO_NOPULL,
+        .Speed = GPIO_SPEED_FREQ_LOW
+    };
+
+    HAL_GPIO_Init(STATUS_LED_PORT, &GPIO_Init);
+    status_led_write(false);
+    status_led_ready = true;
+}
+
+static inline void status_led_tick (void)
+{
+    bool on;
+    sys_state_t state;
+
+    if(!status_led_ready)
+        return;
+
+    status_led_ticks++;
+    state = state_get();
+
+    if(state & (STATE_ALARM|STATE_ESTOP))
+        on = ((status_led_ticks / 125U) & 0x01U) == 0U;
+    else if(st_is_stepping() || state == STATE_HOMING || state == STATE_JOG)
+        on = true;
+    else
+        on = ((status_led_ticks / 500U) & 0x01U) == 0U;
+
+    status_led_write(on);
+}
+#endif
+
 static input_signal_t inputpin[] = {
 // Limit input pins must be consecutive in this array
     { .id = Input_LimitX,         .port = X_LIMIT_PORT,       .pin = X_LIMIT_PIN,         .group = PinGroup_Limit },
@@ -2321,6 +2372,10 @@ static bool driver_setup (settings_t *settings)
         }
     }
 
+#ifdef STATUS_LED_PIN
+    status_led_init();
+#endif
+
     hal.delay_ms(100, NULL);
 
     for(i = 0 ; i < sizeof(outputpin) / sizeof(output_signal_t); i++) {
@@ -3253,4 +3308,8 @@ ISR_CODE void Driver_IncTick (void)
             delay.callback = NULL;
         }
     }
+
+#ifdef STATUS_LED_PIN
+    status_led_tick();
+#endif
 }

@@ -14,6 +14,11 @@
 
 #define BOARD_NAME "H725 Core V250919"
 
+// On-board status LED.
+#define STATUS_LED_PORT              GPIOC
+#define STATUS_LED_PIN               13
+#define STATUS_LED_INVERT            0
+
 // Main PC communication UART on the core board.
 #define SERIAL_PORT                 32      // GPIOD: TX = 8, RX = 9, USART3
 
