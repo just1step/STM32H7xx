@@ -48,7 +48,7 @@
 #define LIMIT_INMODE                GPIO_SINGLE
 
 #define AUXOUTPUT0_PORT             GPIOC   // Spindle PWM
-#define AUXOUTPUT0_PIN              5
+#define AUXOUTPUT0_PIN              8
 // #define AUXOUTPUT1_PORT             GPIOB   // Spindle direction
 // #define AUXOUTPUT1_PIN              5
 #define AUXOUTPUT2_PORT             GPIOC   // Spindle enable
