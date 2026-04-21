@@ -129,8 +129,10 @@
 
 // 定义主轴上的贴片吸嘴控制引脚，一个三通阀控制吸嘴工作，两个步进电机控制吸嘴的旋转和升降
 // 三通阀通电时，吸嘴工作，断电时，吸嘴停止工作
-// #define SUCTION_NOZZLE_VALVE_PORT       GPIOC
-// #define SUCTION_NOZZLE_VALVE_PIN        6
+#define SUCTION_NOZZLE_VALVE_PORT       GPIOE //AIR_VALVE3_EN
+#define SUCTION_NOZZLE_VALVE_PIN        8
+#define SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL   1
+#define SUCTION_NOZZLE_VALVE_INACTIVE_LEVEL 0
 
 // 旋转电机控制引脚，步进电机控制吸嘴的旋转，普通GPIO即可，不需要使用定时器的PWM输出模式，因为旋转电机的控制频率很低，几Hz就足够了
 // #define SUCTION_NOZZLE_ROTATE_STEP_PORT GPIOA 
@@ -192,6 +194,9 @@
 #define AUXOUTPUT7_PIN              SILVER_PASTE_CLAMP_PIN
 #define AUXOUTPUT8_PORT             SOLDER_PASTE_CLAMP_PORT
 #define AUXOUTPUT8_PIN              SOLDER_PASTE_CLAMP_PIN
+#define AUXOUTPUT9_PORT             SUCTION_NOZZLE_VALVE_PORT
+#define AUXOUTPUT9_PIN              SUCTION_NOZZLE_VALVE_PIN
+
 // // PD14/PD15 are wired to the onboard ESP32-C3 UART and must stay reserved.
 
 #if DRIVER_SPINDLE_ENABLE & SPINDLE_ENA

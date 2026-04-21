@@ -48,6 +48,14 @@
 #define SOLDER_PASTE_CLAMP_PULSE_MS 50U
 #endif
 #endif
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+#ifndef SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL
+#define SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL 1
+#endif
+#ifndef SUCTION_NOZZLE_VALVE_INACTIVE_LEVEL
+#define SUCTION_NOZZLE_VALVE_INACTIVE_LEVEL 0
+#endif
+#endif
 #if defined(AIRSLIDE1_PORT)
 #ifndef AIRSLIDE1_ACTIVE_LEVEL
 #define AIRSLIDE1_ACTIVE_LEVEL 1
@@ -126,6 +134,13 @@ static inline void pump_set_airslide1 (bool on)
 }
 #endif
 
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+static inline void pump_set_suction_nozzle (bool on)
+{
+    pump_write_level(SUCTION_NOZZLE_VALVE_PORT, SUCTION_NOZZLE_VALVE_PIN, on ? SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL : SUCTION_NOZZLE_VALVE_INACTIVE_LEVEL);
+}
+#endif
+
 static bool pump_trigger_pulse (foreground_task_ptr off_task, GPIO_TypeDef *gpio, uint32_t pin, bool active_level, uint32_t pulse_ms)
 {
     task_delete(off_task, NULL);
@@ -181,6 +196,10 @@ static user_mcode_type_t pump_mcode_check (user_mcode_t mcode)
 #if defined(SOLDER_PASTE_CLAMP_PORT)
         || mcode == UserMCode_Generic7
         || mcode == UserMCode_Generic9
+#endif
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+        || mcode == UserMCode_Generic10
+        || mcode == UserMCode_Generic11
 #endif
          ? UserMCode_Normal
          : (user_mcode.check ? user_mcode.check(mcode) : UserMCode_Unsupported);
@@ -245,6 +264,19 @@ static status_code_t pump_mcode_validate (parser_block_t *gc_block)
             break;
 
         case UserMCode_Generic9: // M111 - solder paste clamp off
+            gc_block->user_mcode_sync = On;
+            break;
+#endif
+
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+        case UserMCode_Generic10: // M112 - suction nozzle on, vacuum mode required
+            if(pump_state != PumpState_Vacuum)
+                state = Status_InvalidStatement;
+            else
+                gc_block->user_mcode_sync = On;
+            break;
+
+        case UserMCode_Generic11: // M113 - suction nozzle off
             gc_block->user_mcode_sync = On;
             break;
 #endif
@@ -317,6 +349,20 @@ static void pump_mcode_execute (sys_state_t state, parser_block_t *gc_block)
                 break;
 #endif
 
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+            case UserMCode_Generic10:
+                if(pump_state == PumpState_Vacuum) {
+                    pump_set_suction_nozzle(true);
+                    report_message("Suction nozzle: on", Message_Info);
+                }
+                break;
+
+            case UserMCode_Generic11:
+                pump_set_suction_nozzle(false);
+                report_message("Suction nozzle: off", Message_Info);
+                break;
+#endif
+
             default:
                 handled = false;
                 break;
@@ -344,6 +390,9 @@ static bool pump_driver_setup (settings_t *settings)
         task_delete(solder_paste_clamp_off, NULL);
         pump_set_solder_paste_clamp(false);
 #endif
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+        pump_set_suction_nozzle(false);
+#endif
     }
 
     return ok;
@@ -364,6 +413,9 @@ static void pump_driver_reset (void)
     task_delete(solder_paste_clamp_off, NULL);
     pump_set_solder_paste_clamp(false);
 #endif
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+    pump_set_suction_nozzle(false);
+#endif
 }
 
 static void pump_report_options (bool newopt)
@@ -373,11 +425,11 @@ static void pump_report_options (bool newopt)
     if(!newopt)
         report_plugin(
 #if defined(AIRSLIDE1_PORT)
-            "Pump control (M101/M102/M103, M104/M105, M108 Pnn/M110, M109 Pnn/M111)",
+            "Pump control (M101/M102/M103, M104/M105, M108 Pnn/M110, M109 Pnn/M111, M112/M113)",
 #else
-            "Pump control (M101/M102/M103, M108 Pnn/M110, M109 Pnn/M111)",
+            "Pump control (M101/M102/M103, M108 Pnn/M110, M109 Pnn/M111, M112/M113)",
 #endif
-            "0.07"
+            "0.08"
         );
 }
 

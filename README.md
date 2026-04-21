@@ -59,5 +59,10 @@ If no `P` argument is supplied, the board map defaults are used:
 - `SILVER_PASTE_CLAMP_PULSE_MS = 50`
 - `SOLDER_PASTE_CLAMP_PULSE_MS = 50`
 
+### Suction nozzle control
+
+- `M112`: enable the suction nozzle valve (`AUX9`). This command is only valid while the system is already in vacuum mode.
+- `M113`: disable the suction nozzle valve (`AUX9`).
+
 ---
 2024-12-19
