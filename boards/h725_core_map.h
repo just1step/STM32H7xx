@@ -66,7 +66,7 @@
 // #define X2_LIMIT_PIN                13
 
 // 定义气泵的pwm控制引脚
-#define AIR_PUMP_PWM_PORT               GPIOC
+#define AIR_PUMP_PWM_PORT               GPIOC //AIR_PUMP_EN
 #define AIR_PUMP_PWM_PIN                9
 // 气泵控制输入为低电平启动，高电平停止。
 #define AIR_PUMP_PWM_ACTIVE_LEVEL       0
@@ -95,12 +95,24 @@
 #define AIRSLIDE1_PIN               1
 #define AIRSLIDE2_PORT              GPIOB //AIR_VALVE1_EN
 #define AIRSLIDE2_PIN               2
+#define AIRSLIDE1_ACTIVE_LEVEL      1
+#define AIRSLIDE1_INACTIVE_LEVEL    0
+#define AIRSLIDE2_ACTIVE_LEVEL      1
+#define AIRSLIDE2_INACTIVE_LEVEL    0
 
 // 定义主轴上的气动夹具控制引脚，有点胶头，分别是一个银浆点胶头，一个锡膏点胶头
 // 每个点胶头都由一个三通电磁阀控制，三通电磁阀通电时，控制点胶头输出，断电时，控制点胶头停止输出
 // 普通GPIO即可，不需要使用定时器的PWM输出模式，因为点胶头的控制频率很低，几Hz就足够了
-// #define silver_paste_clamp_port          GPIOC
-// #define silver_paste_clamp_pin           6
+#define SILVER_PASTE_CLAMP_PORT          GPIOB //AIR_VALVE6_HF_EN
+#define SILVER_PASTE_CLAMP_PIN           12 
+#define SOLDER_PASTE_CLAMP_PORT          GPIOB //AIR_VALVE7_HF_EN
+#define SOLDER_PASTE_CLAMP_PIN           13 
+#define SILVER_PASTE_CLAMP_ACTIVE_LEVEL   1
+#define SILVER_PASTE_CLAMP_INACTIVE_LEVEL 0
+#define SOLDER_PASTE_CLAMP_ACTIVE_LEVEL   1
+#define SOLDER_PASTE_CLAMP_INACTIVE_LEVEL 0
+#define SILVER_PASTE_CLAMP_PULSE_MS       50U
+#define SOLDER_PASTE_CLAMP_PULSE_MS       50U
 // #define solder_paste_clamp_port          GPIOC
 // #define solder_paste_clamp_pin           8
 
@@ -176,6 +188,10 @@
 #define AUXOUTPUT5_PIN              AIRSLIDE1_PIN
 #define AUXOUTPUT6_PORT             AIRSLIDE2_PORT
 #define AUXOUTPUT6_PIN              AIRSLIDE2_PIN
+#define AUXOUTPUT7_PORT             SILVER_PASTE_CLAMP_PORT
+#define AUXOUTPUT7_PIN              SILVER_PASTE_CLAMP_PIN
+#define AUXOUTPUT8_PORT             SOLDER_PASTE_CLAMP_PORT
+#define AUXOUTPUT8_PIN              SOLDER_PASTE_CLAMP_PIN
 // // PD14/PD15 are wired to the onboard ESP32-C3 UART and must stay reserved.
 
 #if DRIVER_SPINDLE_ENABLE & SPINDLE_ENA

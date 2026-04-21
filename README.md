@@ -24,5 +24,40 @@ Local builds are supported from both STMCubeIDE and PlatformIO. Board specific s
 
 PlatformIO builds for a number of configurations are run automatically as a GitHub Action on each push to the master branch. For convenience, the resulting firmwares are archived in the artifacts for each run, and can be found under the Actions tab on the GitHub repo (these files remain available for 90 days).
 
+## H725 custom M-codes
+
+The `H725 Core V250919` board adaptation adds a small set of board-specific M-codes in `Src/my_plugin.c` for pump, valve and airslide control.
+
+### Pump and pneumatic mode control
+
+- `M101`: enable pressure mode. This turns on the air pump and selects the pressure valve path.
+- `M102`: enable vacuum mode. This turns on the air pump and selects the vacuum valve path.
+- `M103`: stop the air pump and de-energize both pump valves.
+
+### Airslide control
+
+- `M104`: enable `AIRSLIDE1`. This command is only valid while the system is already in pressure mode.
+- `M105`: disable `AIRSLIDE1`.
+
+### Silver paste and solder paste valve control
+
+- `M108`: trigger a pulse on the silver paste valve (`AUX7`).
+- `M109`: trigger a pulse on the solder paste valve (`AUX8`).
+- `M110`: force the silver paste valve output low.
+- `M111`: force the solder paste valve output low.
+
+Both pulse commands support an optional `P` argument in milliseconds:
+
+```gcode
+M108
+M108 P120
+M109 P80
+```
+
+If no `P` argument is supplied, the board map defaults are used:
+
+- `SILVER_PASTE_CLAMP_PULSE_MS = 50`
+- `SOLDER_PASTE_CLAMP_PULSE_MS = 50`
+
 ---
 2024-12-19
