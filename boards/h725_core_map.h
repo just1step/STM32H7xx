@@ -117,9 +117,12 @@
 // #define solder_paste_clamp_pin           8
 
 // 定义主轴上的光固化阻焊剂的控制引脚，有一个三通电磁阀控制光固化阻焊剂的输出，三通电磁阀通电时，控制光固化阻焊剂输出，断电时，控制光固化阻焊剂停止输出
-// 普通GPIO即可，不需要使用定时器的PWM输出模式，因为光固化阻焊剂的控制频率很低，几Hz就足够了
-// #define solder_mask_port                GPIOC
-// #define solder_mask_pin                 7
+// 普通GPIO即可，不需要使用定时器的PWM输出模式，因为光固化阻焊剂的控制频率很低，几Hz就足够了                GPIOC //AIR_VALVE8_HF_EN
+#define UV_LAMP_PORT                    GPIOB //AIR_VALVE8_HF_EN
+#define UV_LAMP_PIN                     14
+#define UV_LAMP_ACTIVE_LEVEL            1
+#define UV_LAMP_INACTIVE_LEVEL          0
+#define UV_LAMP_PULSE_MS                1000U
 
 // 定义主轴上的激光器控制引脚，pwm信号，控制激光器使能和功率
 #define LASER_PWM_PORT                 GPIOC
@@ -196,6 +199,8 @@
 #define AUXOUTPUT8_PIN              SOLDER_PASTE_CLAMP_PIN
 #define AUXOUTPUT9_PORT             SUCTION_NOZZLE_VALVE_PORT
 #define AUXOUTPUT9_PIN              SUCTION_NOZZLE_VALVE_PIN
+#define AUXOUTPUT10_PORT            UV_LAMP_PORT
+#define AUXOUTPUT10_PIN             UV_LAMP_PIN
 
 // // PD14/PD15 are wired to the onboard ESP32-C3 UART and must stay reserved.
 

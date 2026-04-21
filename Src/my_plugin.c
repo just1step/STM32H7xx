@@ -48,6 +48,17 @@
 #define SOLDER_PASTE_CLAMP_PULSE_MS 50U
 #endif
 #endif
+#if defined(UV_LAMP_PORT)
+#ifndef UV_LAMP_ACTIVE_LEVEL
+#define UV_LAMP_ACTIVE_LEVEL 1
+#endif
+#ifndef UV_LAMP_INACTIVE_LEVEL
+#define UV_LAMP_INACTIVE_LEVEL 0
+#endif
+#ifndef UV_LAMP_PULSE_MS
+#define UV_LAMP_PULSE_MS 1000U
+#endif
+#endif
 #if defined(SUCTION_NOZZLE_VALVE_PORT)
 #ifndef SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL
 #define SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL 1
@@ -62,6 +73,14 @@
 #endif
 #ifndef AIRSLIDE1_INACTIVE_LEVEL
 #define AIRSLIDE1_INACTIVE_LEVEL 0
+#endif
+#endif
+#if defined(AIRSLIDE2_PORT)
+#ifndef AIRSLIDE2_ACTIVE_LEVEL
+#define AIRSLIDE2_ACTIVE_LEVEL 1
+#endif
+#ifndef AIRSLIDE2_INACTIVE_LEVEL
+#define AIRSLIDE2_INACTIVE_LEVEL 0
 #endif
 #endif
 
@@ -126,11 +145,31 @@ static void solder_paste_clamp_off (void *data)
 }
 #endif
 
+#if defined(UV_LAMP_PORT)
+static inline void pump_set_uv_lamp (bool on)
+{
+    pump_write_level(UV_LAMP_PORT, UV_LAMP_PIN, on ? UV_LAMP_ACTIVE_LEVEL : UV_LAMP_INACTIVE_LEVEL);
+}
+
+static void uv_lamp_off (void *data)
+{
+    UNUSED(data);
+    pump_set_uv_lamp(false);
+}
+#endif
+
 #if defined(AIRSLIDE1_PORT)
 static inline void pump_set_airslide1 (bool on)
 {
     pump_write_level(AIRSLIDE1_PORT, AIRSLIDE1_PIN, on ? AIRSLIDE1_ACTIVE_LEVEL : AIRSLIDE1_INACTIVE_LEVEL);
     airslide1_on = on;
+}
+#endif
+
+#if defined(AIRSLIDE2_PORT)
+static inline void pump_set_airslide2 (bool on)
+{
+    pump_write_level(AIRSLIDE2_PORT, AIRSLIDE2_PIN, on ? AIRSLIDE2_ACTIVE_LEVEL : AIRSLIDE2_INACTIVE_LEVEL);
 }
 #endif
 
@@ -140,6 +179,11 @@ static inline void pump_set_suction_nozzle (bool on)
     pump_write_level(SUCTION_NOZZLE_VALVE_PORT, SUCTION_NOZZLE_VALVE_PIN, on ? SUCTION_NOZZLE_VALVE_ACTIVE_LEVEL : SUCTION_NOZZLE_VALVE_INACTIVE_LEVEL);
 }
 #endif
+
+static bool pump_is_bool_value (float value)
+{
+    return isintf(value) && (value == 0.0f || value == 1.0f);
+}
 
 static bool pump_trigger_pulse (foreground_task_ptr off_task, GPIO_TypeDef *gpio, uint32_t pin, bool active_level, uint32_t pulse_ms)
 {
@@ -185,22 +229,7 @@ static void pump_apply_state (pump_state_t state)
 
 static user_mcode_type_t pump_mcode_check (user_mcode_t mcode)
 {
-    return mcode == UserMCode_Generic1 || mcode == UserMCode_Generic2 || mcode == UserMCode_Generic3
-#if defined(AIRSLIDE1_PORT)
-        || mcode == UserMCode_Generic4 || mcode == UserMCode_Generic5
-#endif
-#if defined(SILVER_PASTE_CLAMP_PORT)
-        || mcode == UserMCode_Generic6
-        || mcode == UserMCode_Generic8
-#endif
-#if defined(SOLDER_PASTE_CLAMP_PORT)
-        || mcode == UserMCode_Generic7
-        || mcode == UserMCode_Generic9
-#endif
-#if defined(SUCTION_NOZZLE_VALVE_PORT)
-        || mcode == UserMCode_Generic10
-        || mcode == UserMCode_Generic11
-#endif
+    return mcode == UserMCode_Generic1 || mcode == UserMCode_Generic2 || mcode == UserMCode_Generic3 || mcode == UserMCode_Generic4
          ? UserMCode_Normal
          : (user_mcode.check ? user_mcode.check(mcode) : UserMCode_Unsupported);
 }
@@ -211,75 +240,125 @@ static status_code_t pump_mcode_validate (parser_block_t *gc_block)
 
     switch(gc_block->user_mcode) {
 
-        case UserMCode_Generic1: // M101 - pressure mode, auto-start pump
-        case UserMCode_Generic2: // M102 - vacuum mode, auto-start pump
-        case UserMCode_Generic3: // M103 - stop pump and de-energize both valves
-            gc_block->user_mcode_sync = On;
-            break;
-
-#if defined(AIRSLIDE1_PORT)
-        case UserMCode_Generic4: // M104 - AIRSLIDE1 on, pressure mode required
-            if(pump_state != PumpState_Pressure)
+        case UserMCode_Generic1: // M101 - pump mode select via P0/P1/P2
+            if(!gc_block->words.p) {
                 state = Status_InvalidStatement;
+                break;
+            }
+
+            if(!isintf(gc_block->values.p) || gc_block->values.p < 0.0f || gc_block->values.p > 2.0f)
+                state = Status_GcodeValueOutOfRange;
             else
-                gc_block->user_mcode_sync = On;
-            break;
+                gc_block->values.q = gc_block->values.p;
 
-        case UserMCode_Generic5: // M105 - AIRSLIDE1 off
-            gc_block->user_mcode_sync = On;
-            break;
-#endif
-
-#if defined(SILVER_PASTE_CLAMP_PORT)
-        case UserMCode_Generic6: // M108 - silver paste clamp pulse
-            if(gc_block->words.p) {
-                if(gc_block->values.p <= 0.0f)
-                    state = Status_GcodeValueOutOfRange;
-                else
-                    gc_block->words.p = Off;
-            } else
-                gc_block->values.p = (float)SILVER_PASTE_CLAMP_PULSE_MS;
+            gc_block->words.p = Off;
 
             if(state == Status_OK)
                 gc_block->user_mcode_sync = On;
             break;
 
-        case UserMCode_Generic8: // M110 - silver paste clamp off
-            gc_block->user_mcode_sync = On;
-            break;
-#endif
+        case UserMCode_Generic2: // M102 - airslide control via Y/X
+            if((gc_block->words.y ? 1 : 0) + (gc_block->words.x ? 1 : 0) == 0) {
+                state = Status_InvalidStatement;
+                break;
+            }
 
-#if defined(SOLDER_PASTE_CLAMP_PORT)
-        case UserMCode_Generic7: // M109 - solder paste clamp pulse
-            if(gc_block->words.p) {
-                if(gc_block->values.p <= 0.0f)
+            gc_block->values.a = -1.0f;
+            gc_block->values.b = -1.0f;
+
+            if(gc_block->words.y) {
+                if(!pump_is_bool_value(gc_block->values.xyz[Y_AXIS]))
                     state = Status_GcodeValueOutOfRange;
                 else
-                    gc_block->words.p = Off;
-            } else
-                gc_block->values.p = (float)SOLDER_PASTE_CLAMP_PULSE_MS;
+                    gc_block->values.a = gc_block->values.xyz[Y_AXIS];
+                gc_block->words.y = Off;
+            }
+
+            if(state == Status_OK && gc_block->words.x) {
+                if(!pump_is_bool_value(gc_block->values.xyz[X_AXIS]))
+                    state = Status_GcodeValueOutOfRange;
+                else
+                    gc_block->values.b = gc_block->values.xyz[X_AXIS];
+                gc_block->words.x = Off;
+            }
+
+            if(state == Status_OK && ((gc_block->values.a == 1.0f) || (gc_block->values.b == 1.0f)) && pump_state != PumpState_Pressure)
+                state = Status_InvalidStatement;
 
             if(state == Status_OK)
                 gc_block->user_mcode_sync = On;
             break;
 
-        case UserMCode_Generic9: // M111 - solder paste clamp off
-            gc_block->user_mcode_sync = On;
-            break;
-#endif
-
-#if defined(SUCTION_NOZZLE_VALVE_PORT)
-        case UserMCode_Generic10: // M112 - suction nozzle on, vacuum mode required
-            if(pump_state != PumpState_Vacuum)
+        case UserMCode_Generic3: // M103 - dispensing valve pulse via Y/X/Z and P
+            if((gc_block->words.y ? 1 : 0) + (gc_block->words.x ? 1 : 0) + (gc_block->words.z ? 1 : 0) != 1) {
                 state = Status_InvalidStatement;
+                break;
+            }
+
+            gc_block->values.a = -1.0f;
+
+            if(!gc_block->words.p)
+                gc_block->values.p = 0.0f;
+            else if(gc_block->values.p <= 0.0f)
+                state = Status_GcodeValueOutOfRange;
+
+            if(state == Status_OK && gc_block->words.y) {
+                if(!pump_is_bool_value(gc_block->values.xyz[Y_AXIS]) || gc_block->values.xyz[Y_AXIS] == 0.0f)
+                    state = Status_GcodeValueOutOfRange;
+                else
+                    gc_block->values.a = 0.0f;
+                gc_block->words.y = Off;
+            }
+
+            if(state == Status_OK && gc_block->words.x) {
+                if(!pump_is_bool_value(gc_block->values.xyz[X_AXIS]) || gc_block->values.xyz[X_AXIS] == 0.0f)
+                    state = Status_GcodeValueOutOfRange;
+                else
+                    gc_block->values.a = 1.0f;
+                gc_block->words.x = Off;
+            }
+
+            if(state == Status_OK && gc_block->words.z) {
+                if(!pump_is_bool_value(gc_block->values.xyz[Z_AXIS]) || gc_block->values.xyz[Z_AXIS] == 0.0f)
+                    state = Status_GcodeValueOutOfRange;
+                else
+                    gc_block->values.a = 2.0f;
+                gc_block->words.z = Off;
+            }
+
+            if(state == Status_OK) {
+                if(gc_block->values.p == 0.0f) {
+                    if(gc_block->values.a == 0.0f)
+                        gc_block->values.p = (float)SILVER_PASTE_CLAMP_PULSE_MS;
+                    else if(gc_block->values.a == 1.0f)
+                        gc_block->values.p = (float)SOLDER_PASTE_CLAMP_PULSE_MS;
+                    else
+                        gc_block->values.p = (float)UV_LAMP_PULSE_MS;
+                }
+                gc_block->words.p = Off;
+                gc_block->user_mcode_sync = On;
+            }
+            break;
+
+        case UserMCode_Generic4: // M104 - suction nozzle via P0/P1
+            if(!gc_block->words.p) {
+                state = Status_InvalidStatement;
+                break;
+            }
+
+            if(!pump_is_bool_value(gc_block->values.p))
+                state = Status_GcodeValueOutOfRange;
             else
+                gc_block->values.a = gc_block->values.p;
+
+            gc_block->words.p = Off;
+
+            if(state == Status_OK && gc_block->values.a == 1.0f && pump_state != PumpState_Vacuum)
+                state = Status_InvalidStatement;
+            
+            if(state == Status_OK)
                 gc_block->user_mcode_sync = On;
             break;
-
-        case UserMCode_Generic11: // M113 - suction nozzle off
-            gc_block->user_mcode_sync = On;
-            break;
-#endif
 
         default:
             state = Status_Unhandled;
@@ -297,71 +376,55 @@ static void pump_mcode_execute (sys_state_t state, parser_block_t *gc_block)
         switch(gc_block->user_mcode) {
 
             case UserMCode_Generic1:
-                pump_apply_state(PumpState_Pressure);
-                report_message("Pump mode: pressure", Message_Info);
+                if(gc_block->values.q == 0.0f) {
+                    pump_apply_state(PumpState_Off);
+                    report_message("Pump mode: off", Message_Info);
+                } else if(gc_block->values.q == 2.0f) {
+                    pump_apply_state(PumpState_Vacuum);
+                    report_message("Pump mode: vacuum", Message_Info);
+                } else {
+                    pump_apply_state(PumpState_Pressure);
+                    report_message("Pump mode: pressure", Message_Info);
+                }
                 break;
 
             case UserMCode_Generic2:
-                pump_apply_state(PumpState_Vacuum);
-                report_message("Pump mode: vacuum", Message_Info);
+#if defined(AIRSLIDE1_PORT)
+                if(gc_block->values.a >= 0.0f)
+                    pump_set_airslide1(gc_block->values.a != 0.0f);
+#endif
+#if defined(AIRSLIDE2_PORT)
+                if(gc_block->values.b >= 0.0f)
+                    pump_set_airslide2(gc_block->values.b != 0.0f);
+#endif
+                report_message("Airslide update", Message_Info);
                 break;
 
             case UserMCode_Generic3:
-                pump_apply_state(PumpState_Off);
-                report_message("Pump mode: off", Message_Info);
-                break;
-
-#if defined(AIRSLIDE1_PORT)
-            case UserMCode_Generic4:
-                if(pump_state == PumpState_Pressure) {
-                    pump_set_airslide1(true);
-                    report_message("Airslide1: on", Message_Info);
-                }
-                break;
-
-            case UserMCode_Generic5:
-                pump_set_airslide1(false);
-                report_message("Airslide1: off", Message_Info);
-                break;
-#endif
-
+                if(gc_block->values.a == 0.0f) {
 #if defined(SILVER_PASTE_CLAMP_PORT)
-            case UserMCode_Generic6:
-                if(pump_trigger_pulse(silver_paste_clamp_off, SILVER_PASTE_CLAMP_PORT, SILVER_PASTE_CLAMP_PIN, SILVER_PASTE_CLAMP_ACTIVE_LEVEL, (uint32_t)gc_block->values.p))
-                    report_message("Silver paste pulse", Message_Info);
-                break;
-
-            case UserMCode_Generic8:
-                pump_set_silver_paste_clamp(false);
-                report_message("Silver paste: off", Message_Info);
-                break;
+                    if(pump_trigger_pulse(silver_paste_clamp_off, SILVER_PASTE_CLAMP_PORT, SILVER_PASTE_CLAMP_PIN, SILVER_PASTE_CLAMP_ACTIVE_LEVEL, (uint32_t)gc_block->values.p))
+                        report_message("Silver paste pulse", Message_Info);
 #endif
-
+                } else if(gc_block->values.a == 1.0f) {
 #if defined(SOLDER_PASTE_CLAMP_PORT)
-            case UserMCode_Generic7:
-                if(pump_trigger_pulse(solder_paste_clamp_off, SOLDER_PASTE_CLAMP_PORT, SOLDER_PASTE_CLAMP_PIN, SOLDER_PASTE_CLAMP_ACTIVE_LEVEL, (uint32_t)gc_block->values.p))
-                    report_message("Solder paste pulse", Message_Info);
-                break;
-
-            case UserMCode_Generic9:
-                pump_set_solder_paste_clamp(false);
-                report_message("Solder paste: off", Message_Info);
-                break;
+                    if(pump_trigger_pulse(solder_paste_clamp_off, SOLDER_PASTE_CLAMP_PORT, SOLDER_PASTE_CLAMP_PIN, SOLDER_PASTE_CLAMP_ACTIVE_LEVEL, (uint32_t)gc_block->values.p))
+                        report_message("Solder paste pulse", Message_Info);
 #endif
-
-#if defined(SUCTION_NOZZLE_VALVE_PORT)
-            case UserMCode_Generic10:
-                if(pump_state == PumpState_Vacuum) {
-                    pump_set_suction_nozzle(true);
-                    report_message("Suction nozzle: on", Message_Info);
+                } else {
+#if defined(UV_LAMP_PORT)
+                    if(pump_trigger_pulse(uv_lamp_off, UV_LAMP_PORT, UV_LAMP_PIN, UV_LAMP_ACTIVE_LEVEL, (uint32_t)gc_block->values.p))
+                        report_message("UV valve pulse", Message_Info);
+#endif
                 }
                 break;
 
-            case UserMCode_Generic11:
-                pump_set_suction_nozzle(false);
-                report_message("Suction nozzle: off", Message_Info);
-                break;
+            case UserMCode_Generic4:
+#if defined(SUCTION_NOZZLE_VALVE_PORT)
+                pump_set_suction_nozzle(gc_block->values.a == 1.0f);
+                report_message(gc_block->values.a == 1.0f ? "Suction nozzle: on" : "Suction nozzle: off", Message_Info);
 #endif
+                break;
 
             default:
                 handled = false;
@@ -382,6 +445,9 @@ static bool pump_driver_setup (settings_t *settings)
 #if defined(AIRSLIDE1_PORT)
         pump_set_airslide1(false);
 #endif
+#if defined(AIRSLIDE2_PORT)
+        pump_set_airslide2(false);
+#endif
 #if defined(SILVER_PASTE_CLAMP_PORT)
         task_delete(silver_paste_clamp_off, NULL);
         pump_set_silver_paste_clamp(false);
@@ -389,6 +455,10 @@ static bool pump_driver_setup (settings_t *settings)
 #if defined(SOLDER_PASTE_CLAMP_PORT)
         task_delete(solder_paste_clamp_off, NULL);
         pump_set_solder_paste_clamp(false);
+#endif
+#if defined(UV_LAMP_PORT)
+        task_delete(uv_lamp_off, NULL);
+        pump_set_uv_lamp(false);
 #endif
 #if defined(SUCTION_NOZZLE_VALVE_PORT)
         pump_set_suction_nozzle(false);
@@ -405,6 +475,9 @@ static void pump_driver_reset (void)
 #if defined(AIRSLIDE1_PORT)
     pump_set_airslide1(false);
 #endif
+#if defined(AIRSLIDE2_PORT)
+    pump_set_airslide2(false);
+#endif
 #if defined(SILVER_PASTE_CLAMP_PORT)
     task_delete(silver_paste_clamp_off, NULL);
     pump_set_silver_paste_clamp(false);
@@ -412,6 +485,10 @@ static void pump_driver_reset (void)
 #if defined(SOLDER_PASTE_CLAMP_PORT)
     task_delete(solder_paste_clamp_off, NULL);
     pump_set_solder_paste_clamp(false);
+#endif
+#if defined(UV_LAMP_PORT)
+    task_delete(uv_lamp_off, NULL);
+    pump_set_uv_lamp(false);
 #endif
 #if defined(SUCTION_NOZZLE_VALVE_PORT)
     pump_set_suction_nozzle(false);
@@ -425,11 +502,11 @@ static void pump_report_options (bool newopt)
     if(!newopt)
         report_plugin(
 #if defined(AIRSLIDE1_PORT)
-            "Pump control (M101/M102/M103, M104/M105, M108 Pnn/M110, M109 Pnn/M111, M112/M113)",
+            "Pump control (M101 Pn, M102 Y/X, M103 Y/X/Z Pnn, M104 Pn)",
 #else
-            "Pump control (M101/M102/M103, M108 Pnn/M110, M109 Pnn/M111, M112/M113)",
+            "Pump control (M101 Pn, M102 Y/X, M103 Y/X/Z Pnn, M104 Pn)",
 #endif
-            "0.08"
+            "0.10"
         );
 }
 
